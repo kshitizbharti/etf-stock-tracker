@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install beautifulsoup4 lxml apscheduler pytz requests yfinance
+          pip install beautifulsoup4 lxml apscheduler pytz requests yfinance python-dotenv
       
       - name: Run ETF & Stock Tracker
         env:
