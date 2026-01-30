@@ -1,24 +1,21 @@
-import json, os
-from datetime import date
+import json
+import os
+from datetime import datetime
 
 STATE_DIR = "state"
 
-def today_key():
-    return date.today().isoformat()
+def _state_file():
+    today = datetime.now().strftime("%Y-%m-%d")
+    return os.path.join(STATE_DIR, f"{today}.json")
 
 def load_state():
-    os.makedirs(STATE_DIR, exist_ok=True)
-    path = f"{STATE_DIR}/{today_key()}.json"
+    path = _state_file()
     if not os.path.exists(path):
-        return {
-            "date": today_key(),
-            "alerted": {},
-            "summary_sent": False
-        }
+        return {"alerted": {}, "summary_sent": False}
     with open(path, "r") as f:
         return json.load(f)
 
 def save_state(state):
-    path = f"{STATE_DIR}/{today_key()}.json"
-    with open(path, "w") as f:
+    os.makedirs(STATE_DIR, exist_ok=True)
+    with open(_state_file(), "w") as f:
         json.dump(state, f, indent=2)
