@@ -6,7 +6,7 @@ from notifier import send
 import os
 
 ETF_THRESHOLDS = [-2.5, -3.5, -5.0, -8.0, -10.0]
-STOCK_THRESHOLD = -5.0
+STOCK_THRESHOLDS = [-5.0, -8.0, -10.0]
 
 BOT = os.environ["TELEGRAM_BOT_TOKEN"]
 CHAT = os.environ["TELEGRAM_CHAT_ID"]
@@ -46,3 +46,4 @@ if now.hour >= 15 and now.minute >= 30 and not state["summary_sent"]:
     state["summary_sent"] = True
 
 save_state(state)
+
