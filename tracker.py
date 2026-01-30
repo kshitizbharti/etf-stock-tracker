@@ -1,25 +1,36 @@
-from state import load_state, save_statea
+import os
+from state import load_state, save_state
 from market import is_market_hours, now_ist
-from upstox_scraper import fetch_all_etfs
+from etf_fetcher import fetch_all_etfs
 from stock_fetcher import fetch_stocks
 from notifier import send
-from etf_fetcher import fetch_all_etfs
 
-import os
-
-# ===== Threshold slabs =====
+# =========================
+# Threshold slabs
+# =========================
 ETF_THRESHOLDS = [-2.5, -3.5, -5.0, -8.0, -10.0]
 STOCK_THRESHOLDS = [-5.0, -8.0, -10.0]
 
-# ===== Secrets =====
+# =========================
+# Secrets
+# =========================
 BOT = os.environ["TELEGRAM_BOT_TOKEN"]
 CHAT = os.environ["TELEGRAM_CHAT_ID"]
 
-# ===== Load persistent state =====
+# =========================
+# Detect manual run
+# =========================
+IS_MANUAL_RUN = os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
+
+# =========================
+# Load state
+# =========================
 state = load_state()
 now = now_ist()
 
-# ===== Intraday processing =====
+# =========================
+# Intraday processing
+# =========================
 if is_market_hours():
     etfs = fetch_all_etfs()
     stocks = fetch_stocks()
@@ -32,7 +43,6 @@ if is_market_hours():
             else STOCK_THRESHOLDS
         )
 
-        # Determine deepest slab crossed
         crossed = None
         for t in sorted(thresholds, reverse=True):
             if item["change"] <= t:
@@ -43,21 +53,34 @@ if is_market_hours():
 
         prev = state["alerted"].get(item["id"])
 
-        # Alert only if:
-        # - never alerted today
-        # - crossed a deeper slab
-        if prev is None or prev > crossed:
+        # =========================
+        # ALERT RULES
+        # =========================
+        should_alert = False
+
+        if prev is None:
+            should_alert = True
+        elif prev > crossed:
+            should_alert = True
+        elif IS_MANUAL_RUN:
+            # Manual run verification mode
+            should_alert = True
+
+        if should_alert:
             send(
                 BOT,
                 CHAT,
                 f"🚨 <b>{item['id']}</b>\n"
                 f"Change: {item['change']:.2f}%\n"
                 f"Price: ₹{item['price']:.2f}\n"
-                f"Slab crossed: {crossed}%"
+                f"Slab: {crossed}%\n"
+                f"Mode: {'MANUAL' if IS_MANUAL_RUN else 'AUTO'}"
             )
             state["alerted"][item["id"]] = crossed
 
-# ===== End-of-day summary (once) =====
+# =========================
+# EOD Summary
+# =========================
 if now.hour >= 15 and now.minute >= 30 and not state["summary_sent"]:
     send(
         BOT,
@@ -67,7 +90,4 @@ if now.hour >= 15 and now.minute >= 30 and not state["summary_sent"]:
     )
     state["summary_sent"] = True
 
-# ===== Persist state =====
 save_state(state)
-
-
