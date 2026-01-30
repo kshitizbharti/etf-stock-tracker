@@ -6,31 +6,24 @@ def fetch_all_etfs():
 
     for sym in ETF_SYMBOLS:
         try:
-            df = yf.download(
-                sym,
-                period="2d",
-                interval="1m",
-                progress=False
-            )
+            t = yf.Ticker(sym)
+            info = t.fast_info
 
-            if df is None or len(df) < 2:
+            last = info.get("lastPrice")
+            prev = info.get("previousClose")
+
+            if not last or not prev:
                 continue
 
-            prev = df["Close"].iloc[-2]
-            curr = df["Close"].iloc[-1]
-
-            if prev == 0:
-                continue
-
-            change = ((curr - prev) / prev) * 100
+            change = ((last - prev) / prev) * 100
 
             results.append({
                 "id": f"ETF:{sym.replace('.NS','')}",
-                "price": float(curr),
+                "price": float(last),
                 "change": float(change)
             })
 
         except Exception as e:
-            print(f"ETF fetch failed for {sym}: {e}")
+            print(f"ETF failed {sym}: {e}")
 
     return results
