@@ -27,14 +27,41 @@ IS_MANUAL_RUN = os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
 # =========================
 state = load_state()
 now = now_ist()
+market_open = is_market_hours()
 
 # =========================
-# Intraday processing
+# Fetch data
 # =========================
-if is_market_hours():
+etfs = []
+stocks = []
+
+if market_open:
     etfs = fetch_all_etfs()
     stocks = fetch_stocks()
 
+# =========================
+# 🔴 ALWAYS SEND DEBUG MESSAGE ON MANUAL RUN
+# =========================
+if IS_MANUAL_RUN:
+    worst_etf = min([e["change"] for e in etfs], default=None)
+    worst_stock = min([s["change"] for s in stocks], default=None)
+
+    send(
+        BOT,
+        CHAT,
+        "🧪 <b>MANUAL RUN DEBUG</b>\n"
+        f"Time (IST): {now.strftime('%H:%M:%S')}\n"
+        f"Market hours: {market_open}\n"
+        f"ETFs fetched: {len(etfs)}\n"
+        f"Stocks fetched: {len(stocks)}\n"
+        f"Worst ETF %: {worst_etf}\n"
+        f"Worst Stock %: {worst_stock}"
+    )
+
+# =========================
+# Alert logic
+# =========================
+if market_open:
     for item in etfs + stocks:
 
         thresholds = (
@@ -53,18 +80,11 @@ if is_market_hours():
 
         prev = state["alerted"].get(item["id"])
 
-        # =========================
-        # ALERT RULES
-        # =========================
-        should_alert = False
-
-        if prev is None:
-            should_alert = True
-        elif prev > crossed:
-            should_alert = True
-        elif IS_MANUAL_RUN:
-            # Manual run verification mode
-            should_alert = True
+        should_alert = (
+            prev is None or
+            prev > crossed or
+            IS_MANUAL_RUN
+        )
 
         if should_alert:
             send(
@@ -73,21 +93,11 @@ if is_market_hours():
                 f"🚨 <b>{item['id']}</b>\n"
                 f"Change: {item['change']:.2f}%\n"
                 f"Price: ₹{item['price']:.2f}\n"
-                f"Slab: {crossed}%\n"
-                f"Mode: {'MANUAL' if IS_MANUAL_RUN else 'AUTO'}"
+                f"Slab: {crossed}%"
             )
             state["alerted"][item["id"]] = crossed
 
 # =========================
-# EOD Summary
+# Save state
 # =========================
-if now.hour >= 15 and now.minute >= 30 and not state["summary_sent"]:
-    send(
-        BOT,
-        CHAT,
-        f"📊 <b>EOD Summary</b>\n"
-        f"Total alerts today: {len(state['alerted'])}"
-    )
-    state["summary_sent"] = True
-
 save_state(state)
