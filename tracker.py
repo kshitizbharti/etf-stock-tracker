@@ -20,20 +20,38 @@ if is_market_hours():
     stocks = fetch_stocks()
 
     for item in etfs + stocks:
-        thresholds = ETF_THRESHOLDS if item["id"].startswith("ETF:") else [STOCK_THRESHOLD]
 
-        for t in thresholds:
-            if item["change"] <= t:
-                prev = state["alerted"].get(item["id"])
-                if prev is None or prev > t:
-                    send(
-                        BOT,
-                        CHAT,
-                        f"🚨 <b>{item['id']}</b>\n"
-                        f"Change: {item['change']:.2f}%\n"
-                        f"Price: ₹{item['price']:.2f}"
-                    )
-                    state["alerted"][item["id"]] = t
+    thresholds = (
+        ETF_THRESHOLDS
+        if item["id"].startswith("ETF:")
+        else STOCK_THRESHOLDS
+    )
+
+    crossed = None
+    for t in sorted(thresholds, reverse=True):
+        if item["change"] <= t:
+            crossed = t
+
+    if crossed is None:
+        continue
+
+    prev = state["alerted"].get(item["id"])
+
+    # Alert only if:
+    # 1. Never alerted before
+    # 2. Crossed a DEEPER slab
+    if prev is None or prev > crossed:
+        send(
+            BOT,
+            CHAT,
+            f"🚨 <b>{item['id']}</b>\n"
+            f"Change: {item['change']:.2f}%\n"
+            f"Price: ₹{item['price']:.2f}\n"
+            f"Slab: {crossed}%"
+        )
+        state["alerted"][item["id"]] = crossed
+
+
 
 # EOD SUMMARY (ONCE)
 if now.hour >= 15 and now.minute >= 30 and not state["summary_sent"]:
@@ -46,4 +64,5 @@ if now.hour >= 15 and now.minute >= 30 and not state["summary_sent"]:
     state["summary_sent"] = True
 
 save_state(state)
+
 
