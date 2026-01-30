@@ -1,4 +1,4 @@
-name: ETF & Stock Tracker (Persistent)
+name: ETF & Stock Tracker
 
 on:
   schedule:
@@ -9,44 +9,34 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
-    continue-on-error: false
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install yfinance pytz requests
 
-      # --------- RESTORE STATE (OPTIONAL) ----------
-      - name: Restore previous state (optional)
+      - name: Restore state (optional)
         uses: actions/download-artifact@v4
         with:
           name: state
           path: state
         continue-on-error: true
 
-      # --------- ENSURE STATE DIR ----------
-      - name: Ensure state directory exists
+      - name: Ensure state dir
         run: mkdir -p state
 
-      # --------- RUN TRACKER ----------
       - name: Run tracker
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          set -e
-          python tracker.py || true
+        run: python tracker.py
 
-      # --------- UPLOAD STATE (NON-FATAL) ----------
       - name: Upload state (best effort)
         uses: actions/upload-artifact@v4
         with:
