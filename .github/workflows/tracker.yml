@@ -1,34 +1,42 @@
-name: ETF & Stock Tracker
+name: ETF & Stock Tracker (Persistent)
 
 on:
   schedule:
-    - cron: '15,30,45 3-9 * * 1-5'
-    - cron: '0 10 * * 1-5'
+    # Every 15 min during Indian market hours (IST → UTC)
+    - cron: '45,0,15,30 3-9 * * 1-5'
+    # Guaranteed EOD run (15:31 IST)
+    - cron: '1 10 * * 1-5'
   workflow_dispatch:
 
 jobs:
-  track-prices:
+  run:
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      
+
       - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install beautifulsoup4 lxml apscheduler pytz requests yfinance python-dotenv
-      
-      - name: Run ETF & Stock Tracker
+        run: pip install requests beautifulsoup4 lxml yfinance pytz
+
+      - name: Download state
+        uses: actions/download-artifact@v4
+        with:
+          name: state
+          path: state
+        continue-on-error: true
+
+      - name: Run tracker
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          MONGO_URL: "mongodb://localhost:27017"
-          DB_NAME: "etf_tracker"
-        run: |
-          python standalone_tracker.py
+        run: python tracker.py
+
+      - name: Upload state
+        uses: actions/upload-artifact@v4
+        with:
+          name: state
+          path: state
