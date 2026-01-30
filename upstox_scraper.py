@@ -1,24 +1,41 @@
 import requests
 from bs4 import BeautifulSoup
+import yfinance as yf
 
-BASE_URL = "https://upstox.com/etfs/?page={}"
-
+# ===============================
+# Upstox config
+# ===============================
+UPSTOX_URL = "https://upstox.com/etfs/?page={}"
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 }
 
-def _parse_float(text: str) -> float:
-    """
-    Safely parse numeric strings coming from Upstox.
-    Handles:
-    - Unicode minus (−)
-    - En dash (–)
-    - Percent sign
-    - Commas
-    """
-    if not text:
-        raise ValueError("Empty numeric text")
+# ===============================
+# Yahoo Finance fallback ETF list
+# (Stable + works on GitHub Actions)
+# ===============================
+YF_ETFS = [
+    "SILVERBEES.NS",
+    "GOLDBEES.NS",
+    "NIFTYBEES.NS",
+    "BANKBEES.NS",
+    "JUNIORBEES.NS",
+    "ITBEES.NS",
+    "PHARMABEES.NS",
+    "AUTOBEES.NS",
+    "ENERGYBEES.NS",
+    "CPSEETF.NS",
+    "PSUBNKBEES.NS",
+    "MID150BEES.NS",
+    "MON100.NS",
+    "SETFNIF50.NS",
+    "SETFNIFBK.NS",
+]
 
+# ===============================
+# Helpers
+# ===============================
+def _parse_float(text: str) -> float:
     cleaned = (
         text.replace("₹", "")
             .replace("%", "")
@@ -29,29 +46,31 @@ def _parse_float(text: str) -> float:
     )
     return float(cleaned)
 
-def fetch_all_etfs():
-    page = 1
+# ===============================
+# Upstox scraper (best effort)
+# ===============================
+def _fetch_from_upstox():
     results = []
-    seen_first_name = None
+    seen_first = None
+    page = 1
 
-    while page <= 20:  # HARD STOP to avoid infinite pagination
+    while page <= 20:
         try:
-            r = requests.get(BASE_URL.format(page), headers=HEADERS, timeout=20)
-            r.raise_for_status()
+            r = requests.get(UPSTOX_URL.format(page), headers=HEADERS, timeout=15)
+            if r.status_code != 200:
+                break
         except Exception:
             break
 
         soup = BeautifulSoup(r.text, "lxml")
         rows = soup.select("tbody tr")
-
         if not rows:
             break
 
-        # Detect repeated pages (Upstox loops last page)
         first_name = rows[0].find_all("td")[0].get_text(strip=True)
-        if seen_first_name == first_name:
+        if first_name == seen_first:
             break
-        seen_first_name = first_name
+        seen_first = first_name
 
         for row in rows:
             try:
@@ -75,3 +94,54 @@ def fetch_all_etfs():
         page += 1
 
     return results
+
+# ===============================
+# Yahoo Finance fallback
+# ===============================
+def _fetch_from_yfinance():
+    data = yf.download(
+        tickers=YF_ETFS,
+        period="2d",
+        group_by="ticker",
+        threads=True,
+        progress=False
+    )
+
+    results = []
+
+    for sym in YF_ETFS:
+        try:
+            df = data[sym]
+            if len(df) < 2:
+                continue
+
+            prev = df["Close"].iloc[-2]
+            curr = df["Close"].iloc[-1]
+            change = ((curr - prev) / prev) * 100
+
+            results.append({
+                "id": f"ETF:{sym.replace('.NS','')}",
+                "name": sym.replace(".NS", ""),
+                "price": float(curr),
+                "change": float(change)
+            })
+        except Exception:
+            continue
+
+    return results
+
+# ===============================
+# Public API (used by tracker.py)
+# ===============================
+def fetch_all_etfs():
+    """
+    1. Try Upstox (best data)
+    2. If blocked / empty → fallback to Yahoo Finance
+    """
+    etfs = _fetch_from_upstox()
+
+    if etfs:
+        return etfs
+
+    # Guaranteed fallback
+    return _fetch_from_yfinance()
