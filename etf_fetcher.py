@@ -2,33 +2,21 @@ import yfinance as yf
 from etf_symbols import ETF_SYMBOLS
 
 def fetch_all_etfs():
-    data = yf.download(
-        tickers=ETF_SYMBOLS,
-        period="2d",
-        group_by="ticker",
-        threads=True,
-        progress=False
-    )
+    data = yf.download(ETF_SYMBOLS, period="2d", progress=False, threads=True)
+    out = []
 
-    results = []
-
-    for sym in ETF_SYMBOLS:
+    for s in ETF_SYMBOLS:
         try:
-            df = data[sym]
-            if len(df) < 2:
-                continue
-
+            df = data[s]
             prev = df["Close"].iloc[-2]
             curr = df["Close"].iloc[-1]
-            change = ((curr - prev) / prev) * 100
-
-            results.append({
-                "id": f"ETF:{sym.replace('.NS','')}",
-                "name": sym.replace(".NS",""),
+            chg = ((curr - prev) / prev) * 100
+            out.append({
+                "id": f"ETF:{s.replace('.NS','')}",
                 "price": float(curr),
-                "change": float(change)
+                "change": float(chg)
             })
         except Exception:
-            continue
+            pass
 
-    return results
+    return out
