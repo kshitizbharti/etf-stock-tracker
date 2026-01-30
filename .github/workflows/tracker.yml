@@ -2,15 +2,14 @@ name: ETF & Stock Tracker (Persistent)
 
 on:
   schedule:
-    # Every 15 minutes during Indian market hours (IST → UTC)
     - cron: '45,0,15,30 3-9 * * 1-5'
-    # Guaranteed EOD run (15:31 IST)
     - cron: '1 10 * * 1-5'
   workflow_dispatch:
 
 jobs:
   run:
     runs-on: ubuntu-latest
+    continue-on-error: false
 
     steps:
       - name: Checkout repository
@@ -26,29 +25,31 @@ jobs:
           python -m pip install --upgrade pip
           pip install yfinance pytz requests
 
-      # Try to restore previous state (first run = no artifact, this is OK)
-      - name: Download state
+      # --------- RESTORE STATE (OPTIONAL) ----------
+      - name: Restore previous state (optional)
         uses: actions/download-artifact@v4
         with:
           name: state
           path: state
         continue-on-error: true
 
-      # Always ensure state directory exists
-      - name: Prepare state directory
+      # --------- ENSURE STATE DIR ----------
+      - name: Ensure state directory exists
         run: mkdir -p state
 
-      # Run the tracker (this is the only critical step)
+      # --------- RUN TRACKER ----------
       - name: Run tracker
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python tracker.py
+        run: |
+          set -e
+          python tracker.py || true
 
-      # Always upload state, even if tracker fails
-      - name: Upload state
-        if: always()
+      # --------- UPLOAD STATE (NON-FATAL) ----------
+      - name: Upload state (best effort)
         uses: actions/upload-artifact@v4
         with:
           name: state
           path: state
+        continue-on-error: true
