@@ -6,7 +6,6 @@ BASE_URL = "https://upstox.com/etfs/?page={}"
 HEADERS = {
     "User-Agent": "Mozilla/5.0"
 }
-
 def fetch_all_etfs():
     page = 1
     results = []
@@ -42,5 +41,3 @@ def fetch_all_etfs():
         page += 1
 
     return results
-
-
