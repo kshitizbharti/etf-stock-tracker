@@ -3,7 +3,8 @@ from market import is_market_hours, now_ist
 from state import load_state, save_state
 from notifier import send
 from stock_fetcher import fetch_stocks
-from etf_fetcher import fetch_all_etfs
+from upstox_etf_fetcher import fetch_all_etfs
+
 
 BOT = os.environ["TELEGRAM_BOT_TOKEN"]
 CHAT = os.environ["TELEGRAM_CHAT_ID"]
@@ -59,3 +60,4 @@ if market_open:
 
 if not IS_MANUAL:
     save_state(state)
+
