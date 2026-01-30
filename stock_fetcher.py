@@ -1,25 +1,76 @@
 import yfinance as yf
 
+# NSE stocks (Yahoo compatible .NS)
 STOCKS = [
-    "HUDCO.NS","IRCTC.NS","SBIN.NS","TATASTEEL.NS","RELIANCE.NS"
+"DEEPAKNTR.NS","NIACL.NS","IRB.NS","SYNGENE.NS","IGL.NS","TATATECH.NS","GUJGASLTD.NS",
+"AWL.NS","SONACOMS.NS","KPRMILL.NS","EXIDEIND.NS","APARINDS.NS","SJVN.NS","LICHSGFIN.NS",
+"MEDANTA.NS","HONAUT.NS","KPITTECH.NS","ACC.NS","TATAINVEST.NS","APOLLOTYRE.NS",
+"GODFRYPHLP.NS","JUBLFOOD.NS","AJANTPHARM.NS","TATAELXSI.NS","CRISIL.NS","ENDURANCE.NS",
+"THERMAX.NS","AIAENG.NS","NLCINDIA.NS","FLUOROCHEM.NS","BLUESTARCO.NS","UCOBANK.NS",
+"IREDA.NS","PAGEIND.NS","ASTRAL.NS","ITCHOTELS.NS","IPCALAB.NS","COCHINSHIP.NS",
+"CONCOR.NS","GLAXO.NS","UBL.NS","ESCORTS.NS","PGHH.NS","KEI.NS","LTTS.NS",
+"PETRONET.NS","HUDCO.NS","DALBHARAT.NS","SUPREMEIND.NS","VOLTAS.NS","JKCEMENT.NS",
+"KALYANKJIL.NS","BALKRISIND.NS","PIIND.NS","MOTILALOFS.NS","M&MFIN.NS","TATACOMM.NS",
+"IRCTC.NS","MAHABANK.NS","LINDEINDIA.NS","GODREJPROP.NS","APLAPOLLO.NS","MPHASIS.NS",
+"NAM_INDIA.NS","GLENMARK.NS","OBEROIRLTY.NS","SUNDARMFIN.NS","MFSL.NS","SCHAEFFLER.NS",
+"COFORGE.NS","COLPAL.NS","ABBOTINDIA.NS","ATGL.NS","BIOCON.NS","BERGEPAINT.NS",
+"SAIL.NS","MRF.NS","UPL.NS","PRESTIGE.NS","JSL.NS","SUZLON.NS","PHOENIXLTD.NS",
+"GICRE.NS","UNOMINDA.NS","FORTIS.NS","DIXON.NS","NATIONALUM.NS","AUROPHARMA.NS",
+"FEDERALBNK.NS","BHARATFORG.NS","TORNTPOWER.NS","RVNL.NS","IOB.NS","COROMANDEL.NS",
+"YESBANK.NS","OFSS.NS","ALKEM.NS","NMDC.NS","NYKAA.NS","OIL.NS","INDUSINDBK.NS",
+"IDFCFIRSTB.NS","BANKINDIA.NS","AUBANK.NS","SBICARD.NS","NHPC.NS","PAYTM.NS",
+"JSWENERGY.NS","HAVELLS.NS","NAUKRI.NS","SRF.NS","BHEL.NS","MANKIND.NS",
+"ZYDUSLIFE.NS","DABUR.NS","CGPOWER.NS","INDHOTEL.NS","ICICIGI.NS","ABCAPITAL.NS",
+"HINDPETRO.NS","MAZDOCK.NS","ICICIPRULI.NS","RECLTD.NS","UNITDSPR.NS","MAXHEALTH.NS",
+"DRREDDY.NS","LODHA.NS","MARICO.NS","SHREECEM.NS","LUPIN.NS","APOLLOHOSP.NS",
+"ABB.NS","PERSISTENT.NS","GMRAIRPORT.NS","SIEMENS.NS","IDBI.NS","BOSCHLTD.NS",
+"GAIL.NS","JINDALSTEL.NS","ASHOKLEY.NS","ADANIPOWER.NS","POLYCAB.NS","BSE.NS",
+"HDFCAMC.NS","INDUSTOWER.NS","IDEA.NS","CUMMINSIND.NS","CIPLA.NS","HEROMOTOCO.NS",
+"TATAPOWER.NS","MOTHERSON.NS","SOLARINDS.NS","INDIANB.NS","TATACONSUM.NS",
+"BAJAJHLDNG.NS","PFC.NS","GODREJCP.NS","AMBUJACEM.NS","UNIONBANK.NS","TORNTPHARM.NS",
+"TRENT.NS","CHOLAFIN.NS","CANBK.NS","BRITANNIA.NS","PNB.NS","ADANIGREEN.NS",
+"PIDILITIND.NS","DLF.NS","IRFC.NS","BPCL.NS","BANKBARODA.NS","MUTHOOTFIN.NS",
+"HDFCLIFE.NS","DIVISLAB.NS","TECHM.NS","VBL.NS","JIOFIN.NS","TVSMOTOR.NS",
+"LTIM.NS","GRASIM.NS","INDIGO.NS","SHRIRAMFIN.NS","EICHERMOT.NS","SBILIFE.NS",
+"HINDALCO.NS","IOC.NS","TATASTEEL.NS","POWERGRID.NS","DMART.NS","NESTLEIND.NS",
+"WIPRO.NS","COALINDIA.NS","BAJAJ_AUTO.NS","ASIANPAINT.NS","VEDL.NS","ADANIENT.NS",
+"JSWSTEEL.NS","HAL.NS","ADANIPORTS.NS","BEL.NS","ONGC.NS","BAJAJFINSV.NS",
+"NTPC.NS","ULTRACEMCO.NS","TITAN.NS","SUNPHARMA.NS","AXISBANK.NS","ITC.NS",
+"KOTAKBANK.NS","M&M.NS","HCLTECH.NS","MARUTI.NS","LICI.NS","LT.NS",
+"HINDUNILVR.NS","BAJFINANCE.NS","INFY.NS","SBIN.NS","ICICIBANK.NS","TCS.NS",
+"BHARTIARTL.NS","HDFCBANK.NS","RELIANCE.NS"
 ]
 
 def fetch_stocks():
-    data = yf.download(STOCKS, period="2d", progress=False, threads=True)
-    out = []
+    results = []
 
-    for s in STOCKS:
+    for sym in STOCKS:
         try:
-            df = data[s]
+            df = yf.download(
+                sym,
+                period="2d",
+                interval="1m",
+                progress=False
+            )
+
+            if df is None or len(df) < 2:
+                continue
+
             prev = df["Close"].iloc[-2]
             curr = df["Close"].iloc[-1]
-            chg = ((curr - prev) / prev) * 100
-            out.append({
-                "id": f"STOCK:{s.replace('.NS','')}",
-                "price": float(curr),
-                "change": float(chg)
-            })
-        except Exception:
-            pass
 
-    return out
+            if prev == 0:
+                continue
+
+            change = ((curr - prev) / prev) * 100
+
+            results.append({
+                "id": f"STOCK:{sym.replace('.NS','')}",
+                "price": float(curr),
+                "change": float(change)
+            })
+
+        except Exception as e:
+            print(f"Stock fetch failed for {sym}: {e}")
+
+    return results
