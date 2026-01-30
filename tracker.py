@@ -3,6 +3,8 @@ from market import is_market_hours, now_ist
 from upstox_scraper import fetch_all_etfs
 from stock_fetcher import fetch_stocks
 from notifier import send
+from etf_fetcher import fetch_all_etfs
+
 import os
 
 # ===== Threshold slabs =====
@@ -67,4 +69,5 @@ if now.hour >= 15 and now.minute >= 30 and not state["summary_sent"]:
 
 # ===== Persist state =====
 save_state(state)
+
 
